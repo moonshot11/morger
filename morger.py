@@ -115,7 +115,7 @@ if __name__ == "__main__":
         if args.init in config.entries:
             print("-E- Config already contains that entry!")
             sys.exit(1)
-        entry = Entry("Put game path here", "Put mod path here", "No")
+        entry = Entry("Put game path here", "No")
         config.entries[args.init] = entry
         config.write()
         os.makedirs(os.path.join(args.modpath, args.init, ORIG_FOLDER))
