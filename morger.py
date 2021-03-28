@@ -114,16 +114,21 @@ def setup_args():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--config", "-c",
-        default="mods.cfg",
-        dest="config")
-    parser.add_argument("--modpath", default="mods")
+        default="mods.cfg", dest="config",
+        help="The config file to use")
+    parser.add_argument("--modpath", default="mods",
+        help="The root path to store mods")
 
     meg_mode = parser.add_mutually_exclusive_group(required=True)
 
-    meg_mode.add_argument("--list", action="store_true")
-    meg_mode.add_argument("--init")
-    meg_mode.add_argument("--install", "-i")
-    meg_mode.add_argument("--uninstall", "-u")
+    meg_mode.add_argument("--list", action="store_true",
+        help="List out mods currently stored in config")
+    meg_mode.add_argument("--init",
+        help="Initialize a new mod entry")
+    meg_mode.add_argument("--install", "-i",
+        help="Install a mod")
+    meg_mode.add_argument("--uninstall", "-u",
+        help="Uninstall a mod")
 
     return parser.parse_args()
 
