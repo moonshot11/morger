@@ -61,25 +61,50 @@ def modswap(args, entry):
     bakpath = os.path.join(args.modpath, title, MOD_FOLDER)
     origpath = os.path.join(args.modpath, title, ORIG_FOLDER)
     gamepath = entry.basepath
+    filelist = os.path.join(args.modpath, title, "modfiles.list")
 
     if entry.status == "Yes":
         dest1 = bakpath
         src2 = origpath
+        str_src = "mod"
+        str_dest = "original"
     elif entry.status == "No":
         dest1 = origpath
         src2 = bakpath
+        str_src = "original"
+        str_dest = "mod"
     src1 = dest2 = gamepath
 
-    for dpath, dnames, fnames in os.walk("."):
-        for fname in fnames:
-            fpath = os.path.join(dpath, fname)
-            fpath = os.path.relpath(fpath, start=src2)
+    fpaths = []
+
+    if entry.status == "No":
+        print("Scanning filelist")
+        with open(filelist, "w") as fout:
+            for dpath, dnames, fnames in os.walk(src2):
+                for fname in fnames:
+                    fpath = os.path.join(dpath, fname)
+                    fpath = os.path.relpath(fpath, start=src2)
+                    fpaths.append(fpath)
+                    fout.write(fpath + "\n")
+    elif entry.status == "Yes":
+        with open(filelist, "r") as fin:
+            fpaths = [ln.strip() for ln in fin.readlines()]
+
+    print(f"Backing up {str_src} files")
+    for fpath in fpaths:
+        src1_fpath = os.path.join(src1, fpath)
+        if os.path.isfile(src1_fpath):
             os.renames(
-                os.path.join(src1, fpath),
+                src1_fpath,
                 os.path.join(dest1, fpath)
             )
+
+    print(f"Installing {str_dest} files")
+    for fpath in fpaths:
+        src2_fpath = os.path.join(src2, fpath)
+        if os.path.isfile(src2_fpath):
             os.renames(
-                os.path.join(src2, fpath),
+                src2_fpath,
                 os.path.join(dest2, fpath)
             )
 
