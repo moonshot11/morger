@@ -5,6 +5,9 @@ import os
 import re
 import sys
 
+ORIG_FOLDER = "ORIGINAL_FILES_BACKUP"
+MOD_FOLDER = "PUT_MOD_FILES_IN_THIS_FOLDER"
+
 class Entry:
     def __init__(self, basepath, bakpath, status):
         self.basepath = basepath
@@ -88,5 +91,7 @@ if __name__ == "__main__":
         entry = Entry("Put game path here", "Put mod path here", "No")
         config.entries[args.init] = entry
         config.write()
+        os.makedirs(os.path.join(args.modpath, args.init, ORIG_FOLDER))
+        os.makedirs(os.path.join(args.modpath, args.init, MOD_FOLDER))
     else:
         config.write()
