@@ -137,16 +137,16 @@ if __name__ == "__main__":
             print("    Mod active? " + v.active)
             print()
     elif args.init:
-        if args.init in config.entries:
+        title = args.init.lower()
+        if title in config.entries:
             print("-E- Config already contains that entry!")
             sys.exit(1)
         entry = Entry("Put game path here", "No")
-        config.entries[args.init] = entry
+        config.entries[title] = entry
         config.write()
-        os.makedirs(os.path.join(args.modpath, args.init, ORIG_FOLDER))
-        os.makedirs(os.path.join(args.modpath, args.init, MOD_FOLDER))
+        os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
     elif args.install or args.uninstall:
-        title = args.install or args.uninstall
+        title = (args.install or args.uninstall).lower()
         entry = config.entries[title]
         if args.install and entry.active == "Yes":
             print("-E- Mod is already installed!")
