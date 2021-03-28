@@ -55,13 +55,12 @@ class Config:
                 fout.write(f"    Active   = {entry.status}\n")
                 fout.write("\n")
 
-def modswap(args, entry):
+def modswap(title, modpath, entry):
     """Install or uninstall a mod"""
-    title = args.swap
-    bakpath = os.path.join(args.modpath, title, MOD_FOLDER)
-    origpath = os.path.join(args.modpath, title, ORIG_FOLDER)
+    bakpath = os.path.join(modpath, title, MOD_FOLDER)
+    origpath = os.path.join(modpath, title, ORIG_FOLDER)
     gamepath = entry.basepath
-    filelist = os.path.join(args.modpath, title, "modfiles.list")
+    filelist = os.path.join(modpath, title, "modfiles.list")
 
     if entry.status == "Yes":
         dest1 = bakpath
@@ -123,7 +122,8 @@ def setup_args():
 
     meg_mode.add_argument("--list", action="store_true")
     meg_mode.add_argument("--init")
-    meg_mode.add_argument("--swap", "-s")
+    meg_mode.add_argument("--install", "-i")
+    meg_mode.add_argument("--uninstall", "-u")
 
     return parser.parse_args()
 
@@ -145,6 +145,14 @@ if __name__ == "__main__":
         config.write()
         os.makedirs(os.path.join(args.modpath, args.init, ORIG_FOLDER))
         os.makedirs(os.path.join(args.modpath, args.init, MOD_FOLDER))
-    elif args.swap:
-        modswap(args, config.entries[args.swap])
+    elif args.install or args.uninstall:
+        title = args.install or args.uninstall
+        entry = config.entries[title]
+        if args.install and entry.status == "Yes":
+            print("-E- Mod is already installed!")
+            sys.exit(1)
+        elif args.uninstall and entry.status == "No":
+            print("-E- Mod is not currently installed!")
+            sys.exit(1)
+        modswap(title, args.modpath, config.entries[title])
         config.write()
