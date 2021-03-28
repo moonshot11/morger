@@ -5,13 +5,14 @@ import os
 import re
 import sys
 
+class Entry:
+    def __init__(self, basepath, bakpath, status):
+        self.basepath = basepath
+        self.bakpath = bakpath
+        self.status = status
+
 class Config:
     """Class to store config data"""
-    class Entry:
-        def __init__(self, basepath, bakpath, status):
-            self.basepath = basepath
-            self.bakpath = bakpath
-            self.status = status
 
     def __init__(self, filename):
         """Init"""
@@ -39,9 +40,19 @@ class Config:
                         status = v
 
                 if not line and title:
-                    entry = Config.Entry(basepath, bakpath, status)
+                    entry = Entry(basepath, bakpath, status)
                     self.entries[title] = entry
                     title, basepath, bakpath, status = None, None, None, None
+
+    def write(self):
+        """Write out config file"""
+        with open(self.filename, "w") as fout:
+            for title, entry in self.entries.items():
+                fout.write(f"[{title}]\n")
+                fout.write(f"    GamePath = {entry.basepath}\n")
+                fout.write(f"    ModPath  = {entry.bakpath}\n")
+                fout.write(f"    Active   = {entry.status}\n")
+                fout.write("\n")
 
 def setup_args():
     """Initialize arguments"""
@@ -50,12 +61,32 @@ def setup_args():
     parser.add_argument("--config", "-c",
         default="mods.cfg",
         dest="config")
-    parser.add_argument("--init", action="store_true")
-    parser.add_argument("--swap")
+    parser.add_argument("--modpath", default="mods")
+
+    meg_mode = parser.add_mutually_exclusive_group(required=True)
+
+    meg_mode.add_argument("--list", action="store_true")
+    meg_mode.add_argument("--init")
+    meg_mode.add_argument("--swap")
 
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = setup_args()
     config = Config(args.config)
-    print(config.entries)
+    if args.list:
+        for k, v in config.entries.items():
+            print(k)
+            print("    Game Path = " + v.basepath)
+            print("    Mod Path  = " + v.bakpath)
+            print("    Mod active? " + v.status)
+            print()
+    elif args.init:
+        if args.init in config.entries:
+            print("-E- Config already contains that entry!")
+            sys.exit(1)
+        entry = Entry("Put game path here", "Put mod path here", "No")
+        config.entries[args.init] = entry
+        config.write()
+    else:
+        config.write()
