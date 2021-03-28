@@ -9,9 +9,9 @@ ORIG_FOLDER = "ORIGINAL_FILES_BACKUP"
 MOD_FOLDER = "PUT_MOD_FILES_IN_THIS_FOLDER"
 
 class Entry:
-    def __init__(self, basepath, status):
+    def __init__(self, basepath, active):
         self.basepath = basepath
-        self.status = status
+        self.active = active
 
 class Config:
     """Class to store config data"""
@@ -21,7 +21,7 @@ class Config:
         self.filename = filename
         self.entries = dict()
         entry = None
-        title, base, status = None, None, None
+        title, base, active = None, None, None
         with open(filename, "r") as fin:
             for line in fin.readlines():
                 line = line.strip()
@@ -37,14 +37,14 @@ class Config:
                     if k == "GamePath":
                         basepath = v
                     elif k == "Active":
-                        status = v
+                        active = v
 
                 if not line and title:
-                    entry = Entry(basepath, status)
+                    entry = Entry(basepath, active)
                     self.entries[title] = entry
-                    if status not in ("Yes", "No"):
-                        print("-W- Invalid status found:", status)
-                    title, basepath, status = None, None, None
+                    if active not in ("Yes", "No"):
+                        print("-W- Invalid active status found:", active)
+                    title, basepath, active = None, None, None
 
     def write(self):
         """Write out config file"""
@@ -52,7 +52,7 @@ class Config:
             for title, entry in self.entries.items():
                 fout.write(f"[{title}]\n")
                 fout.write(f"    GamePath = {entry.basepath}\n")
-                fout.write(f"    Active   = {entry.status}\n")
+                fout.write(f"    Active   = {entry.active}\n")
                 fout.write("\n")
 
 def modswap(title, modpath, entry):
@@ -62,12 +62,12 @@ def modswap(title, modpath, entry):
     gamepath = entry.basepath
     filelist = os.path.join(modpath, title, "modfiles.list")
 
-    if entry.status == "Yes":
+    if entry.active == "Yes":
         dest1 = bakpath
         src2 = origpath
         str_src = "mod"
         str_dest = "original"
-    elif entry.status == "No":
+    elif entry.active == "No":
         dest1 = origpath
         src2 = bakpath
         str_src = "original"
@@ -76,7 +76,7 @@ def modswap(title, modpath, entry):
 
     fpaths = []
 
-    if entry.status == "No":
+    if entry.active == "No":
         print("Scanning filelist")
         with open(filelist, "w") as fout:
             for dpath, dnames, fnames in os.walk(src2):
@@ -85,7 +85,7 @@ def modswap(title, modpath, entry):
                     fpath = os.path.relpath(fpath, start=src2)
                     fpaths.append(fpath)
                     fout.write(fpath + "\n")
-    elif entry.status == "Yes":
+    elif entry.active == "Yes":
         with open(filelist, "r") as fin:
             fpaths = [ln.strip() for ln in fin.readlines()]
 
@@ -107,7 +107,7 @@ def modswap(title, modpath, entry):
                 os.path.join(dest2, fpath)
             )
 
-    entry.status = "No" if entry.status == "Yes" else "Yes"
+    entry.active = "No" if entry.active == "Yes" else "Yes"
 
 def setup_args():
     """Initialize arguments"""
@@ -134,7 +134,7 @@ if __name__ == "__main__":
         for k, v in config.entries.items():
             print(k)
             print("    Game Path = " + v.basepath)
-            print("    Mod active? " + v.status)
+            print("    Mod active? " + v.active)
             print()
     elif args.init:
         if args.init in config.entries:
@@ -148,10 +148,10 @@ if __name__ == "__main__":
     elif args.install or args.uninstall:
         title = args.install or args.uninstall
         entry = config.entries[title]
-        if args.install and entry.status == "Yes":
+        if args.install and entry.active == "Yes":
             print("-E- Mod is already installed!")
             sys.exit(1)
-        elif args.uninstall and entry.status == "No":
+        elif args.uninstall and entry.active == "No":
             print("-E- Mod is not currently installed!")
             sys.exit(1)
         modswap(title, args.modpath, config.entries[title])
