@@ -108,6 +108,7 @@ def modswap(title, modpath, entry):
             )
 
     entry.active = "No" if entry.active == "Yes" else "Yes"
+    print("Done!")
 
 def setup_args():
     """Initialize arguments"""
