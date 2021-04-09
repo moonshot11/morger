@@ -127,9 +127,9 @@ def setup_args():
     meg_mode.add_argument("--init",
         help="Initialize a new mod entry")
     meg_mode.add_argument("--install", "-i",
-        help="Install a mod")
+        help="Install a mod", metavar="MODNAME")
     meg_mode.add_argument("--uninstall", "-u",
-        help="Uninstall a mod")
+        help="Uninstall a mod", metavar="MODNAME")
 
     return parser.parse_args()
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     elif args.init:
         title = args.init.lower()
         if title in config.entries:
-            print("-E- Config already contains that entry!")
+            print("Error: Config already contains that entry!")
             sys.exit(1)
         entry = Entry("Put game path here", "No")
         config.entries[title] = entry
@@ -155,10 +155,10 @@ if __name__ == "__main__":
         title = (args.install or args.uninstall).lower()
         entry = config.entries[title]
         if args.install and entry.active == "Yes":
-            print("-E- Mod is already installed!")
+            print("Error: Mod is already installed!")
             sys.exit(1)
         elif args.uninstall and entry.active == "No":
-            print("-E- Mod is not currently installed!")
+            print("Error: Mod is not currently installed!")
             sys.exit(1)
         modswap(title, args.modpath, config.entries[title])
         config.write()
