@@ -27,7 +27,7 @@ class Config:
                 line = line.strip()
                 if line.startswith("#"):
                     continue
-                match = re.match(r"\[\s*([A-Za-z0-9 ]+)\s*\]", line)
+                match = re.match(r"\[\s*(\S+)\s*\]", line)
                 if match:
                     title = match.group(1)
                     continue
