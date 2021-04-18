@@ -9,9 +9,11 @@ ORIG_FOLDER = "ORIGINAL_FILES_BACKUP"
 MOD_FOLDER = "PUT_MOD_FILES_IN_THIS_FOLDER"
 
 class Entry:
-    def __init__(self, basepath, active):
+    def __init__(self, basepath, active, dependencies):
         self.basepath = basepath
         self.active = active
+        self.deps = dependencies
+        self.depends_on_me = list()
 
 class Config:
     """Class to store config data"""
@@ -20,8 +22,11 @@ class Config:
         """Init"""
         self.filename = filename
         self.entries = dict()
+        if not os.path.isfile(filename):
+            return
         entry = None
         title, base, active = None, None, None
+        dependencies = list()
         with open(filename, "r") as fin:
             for line in fin.readlines():
                 line = line.strip()
@@ -38,13 +43,26 @@ class Config:
                         basepath = v
                     elif k == "Active":
                         active = v
+                    elif k == "Dependencies":
+                        dependencies = v.split()
 
                 if not line and title:
-                    entry = Entry(basepath, active)
+                    entry = Entry(basepath, active, dependencies)
                     self.entries[title] = entry
                     if active not in ("Yes", "No"):
                         print("-W- Invalid active status found:", active)
                     title, basepath, active = None, None, None
+                    dependencies = list()
+
+        # Validate dependencies
+        for title, entry in self.entries.items():
+            if not entry.deps:
+                continue
+            for dep in entry.deps:
+                if dep not in self.entries:
+                    print(f'-E- Invalid dependency "{dep}" found in entry: {title}')
+                    sys.exit(1)
+                self.entries[dep].depends_on_me.append(title)
 
     def write(self):
         """Write out config file"""
@@ -53,31 +71,53 @@ class Config:
                 fout.write(f"[{title}]\n")
                 fout.write(f"    GamePath = {entry.basepath}\n")
                 fout.write(f"    Active   = {entry.active}\n")
+                fout.write(f"    Dependencies = {' '.join(entry.deps)}\n")
                 fout.write("\n")
 
-def modswap(title, modpath, entry):
+def modswap(title, modpath, config, mode):
     """Install or uninstall a mod"""
+    if mode not in ("install", "uninstall"):
+        print("-E- Invalid mode!")
+        sys.exit(1)
+    entry = config.entries[title]
+
+    if mode == "install":
+        dependencies = entry.deps
+    elif mode == "uninstall":
+        dependencies = entry.depends_on_me
+
+    for dep in dependencies:
+        dep_entry = config.entries[dep]
+        modswap(dep, modpath, config, mode)
+
+    if mode == "install" and entry.active == "Yes":
+        print(f"Mod {title} already installed")
+        return
+    elif mode == "uninstall" and entry.active == "No":
+        print(f"Mod {title} already uninstalled")
+        return
+
     bakpath = os.path.join(modpath, title, MOD_FOLDER)
     origpath = os.path.join(modpath, title, ORIG_FOLDER)
     gamepath = entry.basepath
     filelist = os.path.join(modpath, title, "modfiles.list")
 
-    if entry.active == "Yes":
-        dest1 = bakpath
-        src2 = origpath
-        str_src = "mod"
-        str_dest = "original"
-    elif entry.active == "No":
+    if mode == "install":
         dest1 = origpath
         src2 = bakpath
         str_src = "original"
         str_dest = "mod"
+    elif mode == "uninstall":
+        dest1 = bakpath
+        src2 = origpath
+        str_src = "mod"
+        str_dest = "original"
     src1 = dest2 = gamepath
 
     fpaths = []
 
-    if entry.active == "No":
-        print("Scanning filelist")
+    if mode == "install":
+        print(f"Scanning filelist: {title}")
         with open(filelist, "w") as fout:
             for dpath, dnames, fnames in os.walk(src2):
                 for fname in fnames:
@@ -85,11 +125,11 @@ def modswap(title, modpath, entry):
                     fpath = os.path.relpath(fpath, start=src2)
                     fpaths.append(fpath)
                     fout.write(fpath + "\n")
-    elif entry.active == "Yes":
+    elif mode == "uninstall":
         with open(filelist, "r") as fin:
             fpaths = [ln.strip() for ln in fin.readlines()]
 
-    print(f"Backing up {str_src} files")
+    print(f"Backing up {str_src} files: {title}")
     for fpath in fpaths:
         src1_fpath = os.path.join(src1, fpath)
         if os.path.isfile(src1_fpath):
@@ -98,7 +138,7 @@ def modswap(title, modpath, entry):
                 os.path.join(dest1, fpath)
             )
 
-    print(f"Installing {str_dest} files")
+    print(f"Installing {str_dest} files: {title}")
     for fpath in fpaths:
         src2_fpath = os.path.join(src2, fpath)
         if os.path.isfile(src2_fpath):
@@ -107,7 +147,7 @@ def modswap(title, modpath, entry):
                 os.path.join(dest2, fpath)
             )
 
-    entry.active = "No" if entry.active == "Yes" else "Yes"
+    entry.active = "No" if mode == "uninstall" else "Yes"
     print("Done!")
 
 def setup_args():
@@ -141,24 +181,21 @@ if __name__ == "__main__":
             print(k)
             print("    Game Path = " + v.basepath)
             print("    Mod active? " + v.active)
+            print("    Dependencies? " + ", ".join(v.deps))
+            print("    Depends on me? " + ", ".join(v.depends_on_me))
             print()
     elif args.init:
         title = args.init.lower()
         if title in config.entries:
             print("Error: Config already contains that entry!")
             sys.exit(1)
-        entry = Entry("Put game path here", "No")
+        entry = Entry("Put game path here", "No", list())
         config.entries[title] = entry
         config.write()
         os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
     elif args.install or args.uninstall:
         title = (args.install or args.uninstall).lower()
         entry = config.entries[title]
-        if args.install and entry.active == "Yes":
-            print("Error: Mod is already installed!")
-            sys.exit(1)
-        elif args.uninstall and entry.active == "No":
-            print("Error: Mod is not currently installed!")
-            sys.exit(1)
-        modswap(title, args.modpath, config.entries[title])
+        mode = "install" if args.install else "uninstall"
+        modswap(title, args.modpath, config, mode)
         config.write()
