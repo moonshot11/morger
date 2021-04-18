@@ -99,7 +99,7 @@ def modswap(title, modpath, config, mode):
         if mode == "install":
             modswap(dep, modpath, config, mode)
         elif mode == "uninstall" and dep_entry.active == "Yes":
-            say("Error: Dependent mod installed - use reset mode")
+            say("Error: Tried to uninstall mod prematurely")
             sys.exit(1)
 
     if mode == "install" and entry.active == "Yes":
@@ -223,18 +223,25 @@ if __name__ == "__main__":
         config.write()
         os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
 
-    elif args.install or args.uninstall:
-        title = (args.install or args.uninstall).lower()
+    elif args.install:
+        if args.install not in config.entries:
+            print("Error: I don't recognize that mod!")
+        title = args.install.lower()
         if args.install:
             modswap(title, args.modpath, config, "install")
-        elif args.uninstall:
-            modswap(title, args.modpath, config, "uninstall")
         config.write()
 
-    elif args.reset:
-        if not config.queue:
+    elif args.uninstall or args.reset:
+        if args.uninstall and args.uninstall not in config.entries:
+            print("Error: I don't recognize that mod!")
+            sys.exit(1)
+        if not config.queue or (args.uninstall and args.uninstall not in config.queue):
             print("Nothing to do!")
-        while config.queue:
+            sys.exit(0)
+        target = args.uninstall if args.uninstall else config.queue[0]
+        while target in config.queue:
             title = config.queue[-1]
             modswap(title, args.modpath, config, "uninstall")
         config.write()
+
+    sys.exit(0)
