@@ -22,6 +22,7 @@ class Config:
         """Init"""
         self.filename = filename
         self.entries = dict()
+        self.queue = list()
         if not os.path.isfile(filename):
             return
         entry = None
@@ -31,6 +32,9 @@ class Config:
             for line in fin.readlines():
                 line = line.strip()
                 if line.startswith("#"):
+                    continue
+                elif line.startswith("queue ="):
+                    self.queue = line[line.index("=")+1:].split()
                     continue
                 match = re.match(r"\[\s*(\S+)\s*\]", line)
                 if match:
@@ -60,7 +64,7 @@ class Config:
                 continue
             for dep in entry.deps:
                 if dep not in self.entries:
-                    print(f'-E- Invalid dependency "{dep}" found in entry: {title}')
+                    print(f'Error: Invalid dependency "{dep}" found in entry: {title}')
                     sys.exit(1)
                 self.entries[dep].depends_on_me.append(title)
 
@@ -73,11 +77,15 @@ class Config:
                 fout.write(f"    Active   = {entry.active}\n")
                 fout.write(f"    Dependencies = {' '.join(entry.deps)}\n")
                 fout.write("\n")
+            fout.write(f"queue = {' '.join(self.queue)}")
 
 def modswap(title, modpath, config, mode):
     """Install or uninstall a mod"""
+    def say(*msg):
+        print(f"[{title}]:", *msg)
+
     if mode not in ("install", "uninstall"):
-        print("-E- Invalid mode!")
+        print("Error: Invalid mode!")
         sys.exit(1)
     entry = config.entries[title]
 
@@ -88,13 +96,17 @@ def modswap(title, modpath, config, mode):
 
     for dep in dependencies:
         dep_entry = config.entries[dep]
-        modswap(dep, modpath, config, mode)
+        if mode == "install":
+            modswap(dep, modpath, config, mode)
+        elif mode == "uninstall" and dep_entry.active == "Yes":
+            say("Error: Dependent mod installed - use reset mode")
+            sys.exit(1)
 
     if mode == "install" and entry.active == "Yes":
-        print(f"Mod {title} already installed")
+        say("Already installed")
         return
     elif mode == "uninstall" and entry.active == "No":
-        print(f"Mod {title} already uninstalled")
+        say("Already uninstalled")
         return
 
     bakpath = os.path.join(modpath, title, MOD_FOLDER)
@@ -117,7 +129,7 @@ def modswap(title, modpath, config, mode):
     fpaths = []
 
     if mode == "install":
-        print(f"Scanning filelist: {title}")
+        say("Scanning filelist")
         with open(filelist, "w") as fout:
             for dpath, dnames, fnames in os.walk(src2):
                 for fname in fnames:
@@ -129,7 +141,7 @@ def modswap(title, modpath, config, mode):
         with open(filelist, "r") as fin:
             fpaths = [ln.strip() for ln in fin.readlines()]
 
-    print(f"Backing up {str_src} files: {title}")
+    say(f"Backing up {str_src} files")
     for fpath in fpaths:
         src1_fpath = os.path.join(src1, fpath)
         if os.path.isfile(src1_fpath):
@@ -138,7 +150,7 @@ def modswap(title, modpath, config, mode):
                 os.path.join(dest1, fpath)
             )
 
-    print(f"Installing {str_dest} files: {title}")
+    say(f"Installing {str_dest} files")
     for fpath in fpaths:
         src2_fpath = os.path.join(src2, fpath)
         if os.path.isfile(src2_fpath):
@@ -147,8 +159,19 @@ def modswap(title, modpath, config, mode):
                 os.path.join(dest2, fpath)
             )
 
-    entry.active = "No" if mode == "uninstall" else "Yes"
-    print("Done!")
+    if mode == "install":
+        entry.active = "Yes"
+        config.queue.append(title)
+    elif mode == "uninstall":
+        entry.active = "No"
+        popped = config.queue.pop()
+        # Final sanity check
+        if popped != title:
+            say("Error: Uh-oh...I uninstalled the wrong mod!")
+            config.write()
+            sys.exit(1)
+    say("Done!")
+    print()
 
 def setup_args():
     """Initialize arguments"""
@@ -170,6 +193,8 @@ def setup_args():
         help="Install a mod", metavar="MODNAME")
     meg_mode.add_argument("--uninstall", "-u",
         help="Uninstall a mod", metavar="MODNAME")
+    meg_mode.add_argument("--reset", "-r", action="store_true",
+        help="Uninstall all mods")
 
     return parser.parse_args()
 
@@ -184,6 +209,10 @@ if __name__ == "__main__":
             print("    Dependencies? " + ", ".join(v.deps))
             print("    Depends on me? " + ", ".join(v.depends_on_me))
             print()
+        print(f"Queue ({len(config.queue)})")
+        for item in config.queue:
+            print("    " + item)
+
     elif args.init:
         title = args.init.lower()
         if title in config.entries:
@@ -193,9 +222,19 @@ if __name__ == "__main__":
         config.entries[title] = entry
         config.write()
         os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
+
     elif args.install or args.uninstall:
         title = (args.install or args.uninstall).lower()
-        entry = config.entries[title]
-        mode = "install" if args.install else "uninstall"
-        modswap(title, args.modpath, config, mode)
+        if args.install:
+            modswap(title, args.modpath, config, "install")
+        elif args.uninstall:
+            modswap(title, args.modpath, config, "uninstall")
+        config.write()
+
+    elif args.reset:
+        if not config.queue:
+            print("Nothing to do!")
+        while config.queue:
+            title = config.queue[-1]
+            modswap(title, args.modpath, config, "uninstall")
         config.write()
