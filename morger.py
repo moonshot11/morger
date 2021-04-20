@@ -233,9 +233,10 @@ if __name__ == "__main__":
             print("    Dependencies? " + v.dep_titles)
             print("    Depends on me? " + v.dom_titles)
             print()
-        print(f"Queue ({len(config.queue)})")
-        for item in config.queue:
-            print("    " + item)
+        print(f"Installation history queue ({len(config.queue)})")
+        for i, item in enumerate(config.queue):
+            ordinal = f"{i+1}. ".rjust(4)
+            print("   " + ordinal + item)
 
     elif args.init:
         title = args.init.lower()
