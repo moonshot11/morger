@@ -251,6 +251,7 @@ if __name__ == "__main__":
     elif args.install:
         if args.install not in config.entries:
             print("Error: I don't recognize that mod!")
+            sys.exit(1)
         title = args.install.lower()
         if args.install:
             modswap(config.entries[title], args.modpath, config, "install")
