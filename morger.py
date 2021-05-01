@@ -209,7 +209,7 @@ def setup_args():
 
     meg_mode = parser.add_mutually_exclusive_group(required=True)
 
-    meg_mode.add_argument("--list", action="store_true",
+    meg_mode.add_argument("--list", "-l", action="store_true",
         help="List out mods currently stored in config")
     meg_mode.add_argument("--init",
         help="Initialize a new mod entry")
