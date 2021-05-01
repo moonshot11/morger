@@ -4,6 +4,8 @@ import argparse
 import os
 import re
 import sys
+from virterm import col
+
 
 ORIG_FOLDER = "ORIGINAL_FILES_BACKUP"
 MOD_FOLDER = "PUT_MOD_FILES_IN_THIS_FOLDER"
@@ -108,7 +110,7 @@ def circular_check(entry, visited):
 def modswap(entry, modpath, config, mode):
     """Install or uninstall a mod"""
     def say(*msg):
-        print(f"[{entry.title}]:", *msg)
+        print(col("yellow-bright"), f"[{entry.title}]:", col(), *msg)
 
     if mode not in ("install", "uninstall"):
         print("Error: Invalid mode!")
@@ -226,12 +228,16 @@ if __name__ == "__main__":
     args = setup_args()
     config = Config(args.config)
     if args.list:
+        def active_color(word):
+            if word == "Yes":
+                return col("green-bright", "Yes")
+            return "No"
         for k, v in config.entries.items():
-            print(f"[{k}]")
-            print("    Game Path = " + v.basepath)
-            print("    Mod active? " + v.active)
-            print("    Dependencies? " + v.dep_titles)
-            print("    Depends on me? " + v.dom_titles)
+            print(col("ylw-bright", f"[{k}]"))
+            print(col("cyan-bright", "    Game Path: ") + v.basepath)
+            print(col("cyan-bright", "    Mod active? ") + active_color(v.active))
+            print(col("cyan-bright", "    Dependencies? ") + v.dep_titles)
+            print(col("cyan-bright", "    Depends on me? ") + v.dom_titles)
             print()
         print(f"Installation history queue ({len(config.queue)})")
         for i, item in enumerate(config.queue):
