@@ -232,7 +232,8 @@ if __name__ == "__main__":
             if word == "Yes":
                 return col("green-bright", "Yes")
             return "No"
-        for k, v in config.entries.items():
+        for k in sorted(config.entries.keys()):
+            v = config.entries[k]
             print(col("ylw-bright", f"[{k}]"))
             print(col("cyan-bright", "    Game Path: ") + v.basepath)
             print(col("cyan-bright", "    Mod active? ") + active_color(v.active))
