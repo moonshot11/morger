@@ -109,8 +109,10 @@ def circular_check(entry, visited):
 
 def modswap(entry, modpath, config, mode):
     """Install or uninstall a mod"""
+    is_playlist = False
     def say(*msg):
-        print(col("yellow-bright"), f"[{entry.title}]:", col(), *msg)
+        color = "cyan-bright" if is_playlist else "yellow-bright"
+        print(col(color), f"[{entry.title}]:", col(), *msg)
 
     if mode not in ("install", "uninstall"):
         print("Error: Invalid mode!")
@@ -154,7 +156,7 @@ def modswap(entry, modpath, config, mode):
     fpaths = []
 
     if mode == "install":
-        say("Scanning filelist")
+        say("Scanning mod files")
         with open(filelist, "w") as fout:
             for dpath, dnames, fnames in os.walk(src2):
                 for fname in fnames:
@@ -162,28 +164,37 @@ def modswap(entry, modpath, config, mode):
                     fpath = os.path.relpath(fpath, start=src2)
                     fpaths.append(fpath)
                     fout.write(fpath + "\n")
-        say(f"Backing up original game files")
+        if fpaths:
+            say("Backing up original game files")
+        else:
+            is_playlist = True
+            say("No files - mod is a playlist")
     elif mode == "uninstall":
         with open(filelist, "r") as fin:
             fpaths = [ln.strip() for ln in fin.readlines()]
-        say(f"Uninstalling mod files")
+        if fpaths:
+            say(f"Uninstalling mod files")
+        else:
+            is_playlist = True
+            say(f"Uninstalling playlist")
 
-    for fpath in fpaths:
-        src1_fpath = os.path.join(src1, fpath)
-        if os.path.isfile(src1_fpath):
-            os.renames(
-                src1_fpath,
-                os.path.join(dest1, fpath)
-            )
+    if fpaths:
+        for fpath in fpaths:
+            src1_fpath = os.path.join(src1, fpath)
+            if os.path.isfile(src1_fpath):
+                os.renames(
+                    src1_fpath,
+                    os.path.join(dest1, fpath)
+                )
 
-    say(f"Installing {str_dest} files")
-    for fpath in fpaths:
-        src2_fpath = os.path.join(src2, fpath)
-        if os.path.isfile(src2_fpath):
-            os.renames(
-                src2_fpath,
-                os.path.join(dest2, fpath)
-            )
+        say(f"Installing {str_dest} files")
+        for fpath in fpaths:
+            src2_fpath = os.path.join(src2, fpath)
+            if os.path.isfile(src2_fpath):
+                os.renames(
+                    src2_fpath,
+                    os.path.join(dest2, fpath)
+                )
 
     if mode == "install":
         entry.active = "Yes"
@@ -196,7 +207,8 @@ def modswap(entry, modpath, config, mode):
             say("Error: Uh-oh...I uninstalled the wrong mod!")
             config.write()
             sys.exit(1)
-    say(f"Mod {mode}ed!")
+    mod_type = "Mod" if fpaths else "Playlist"
+    say(f"{mod_type} {mode}ed!")
     print()
 
 def setup_args():
@@ -244,6 +256,7 @@ if __name__ == "__main__":
         for i, item in enumerate(config.queue):
             ordinal = f"{i+1}. ".rjust(4)
             print("   " + ordinal + item)
+        print()
 
     elif args.init:
         title = args.init.lower()
