@@ -14,7 +14,7 @@ class Entry:
     def __init__(self, title, basepath, active, dependencies):
         self.title = title
         self.basepath = basepath
-        self.active = active
+        self.active = bool(active == "Yes")
         self.deps = dependencies
         self.depends_on_me = list()
 
@@ -89,11 +89,13 @@ class Config:
 
     def write(self):
         """Write out config file"""
+        def yn(value):
+            return "Yes" if value else "No"
         with open(self.filename, "w") as fout:
             for title, entry in self.entries.items():
                 fout.write(f"[{title}]\n")
                 fout.write(f"    GamePath = {entry.basepath}\n")
-                fout.write(f"    Active   = {entry.active}\n")
+                fout.write(f"    Active   = {yn(entry.active)}\n")
                 fout.write(f"    Dependencies = {entry.dep_titles}\n")
                 fout.write("\n")
             fout.write(f"queue = {' '.join(self.queue)}")
@@ -127,14 +129,14 @@ def modswap(entry, modpath, config, mode):
         dep_entry = config.entries[dep.title]
         if mode == "install":
             modswap(dep, modpath, config, mode)
-        elif mode == "uninstall" and dep_entry.active == "Yes":
+        elif mode == "uninstall" and dep_entry.active:
             say("Error: Tried to uninstall mod prematurely")
             sys.exit(1)
 
-    if mode == "install" and entry.active == "Yes":
+    if mode == "install" and entry.active:
         say("Already installed")
         return
-    elif mode == "uninstall" and entry.active == "No":
+    elif mode == "uninstall" and not entry.active:
         say("Already uninstalled")
         return
 
@@ -197,10 +199,10 @@ def modswap(entry, modpath, config, mode):
                 )
 
     if mode == "install":
-        entry.active = "Yes"
+        entry.active = True
         config.queue.append(entry.title)
     elif mode == "uninstall":
-        entry.active = "No"
+        entry.active = False
         popped = config.queue.pop()
         # Final sanity check
         if popped != entry.title:
@@ -240,8 +242,8 @@ if __name__ == "__main__":
     args = setup_args()
     config = Config(args.config)
     if args.list:
-        def active_color(word):
-            if word == "Yes":
+        def active_color(value):
+            if value:
                 return col("green-bright", "Yes")
             return "No"
         for k in sorted(config.entries.keys()):
@@ -263,7 +265,7 @@ if __name__ == "__main__":
         if title in config.entries:
             print("Error: Config already contains that entry!")
             sys.exit(1)
-        entry = Entry(title, "Put game path here", "No", list())
+        entry = Entry(title, "Put game path here", False, list())
         config.entries[title] = entry
         config.write()
         os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
