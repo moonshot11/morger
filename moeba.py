@@ -11,10 +11,11 @@ ORIG_FOLDER = "ORIGINAL_FILES_BACKUP"
 MOD_FOLDER = "PUT_MOD_FILES_IN_THIS_FOLDER"
 
 class Entry:
-    def __init__(self, title, basepath, active, dependencies):
+    def __init__(self, title, basepath, active, copy, dependencies):
         self.title = title
         self.basepath = basepath
         self.active = bool(active == "Yes")
+        self.copy = bool(copy == "Yes")
         self.deps = dependencies
         self.depends_on_me = list()
 
@@ -37,7 +38,7 @@ class Config:
         if not os.path.isfile(filename):
             return
         entry = None
-        title, base, active = None, None, None
+        title, base, active, copy = None, None, None, None
         dependencies = list()
         with open(filename, "r") as fin:
             for line in fin.readlines():
@@ -58,15 +59,19 @@ class Config:
                         basepath = v
                     elif k == "Active":
                         active = v
+                    elif k == "Copy":
+                        copy = v
                     elif k == "Dependencies":
                         dependencies = v.split()
 
                 if not line and title:
-                    entry = Entry(title, basepath, active, dependencies)
+                    entry = Entry(title, basepath, active, copy, dependencies)
                     self.entries[title] = entry
                     if active not in ("Yes", "No"):
                         print("-W- Invalid active status found:", active)
-                    title, basepath, active = None, None, None
+                    elif copy not in ("Yes", "No"):
+                        print("-W- Invalid copy mode found:", copy)
+                    title, basepath, active, copy = None, None, None, None
                     dependencies = list()
 
         # Re-initialize dependencies with objects
@@ -96,6 +101,7 @@ class Config:
                 fout.write(f"[{title}]\n")
                 fout.write(f"    GamePath = {entry.basepath}\n")
                 fout.write(f"    Active   = {yn(entry.active)}\n")
+                fout.write(f"    Copy     = {yn(entry.copy)}\n")
                 fout.write(f"    Dependencies = {entry.dep_titles}\n")
                 fout.write("\n")
             fout.write(f"queue = {' '.join(self.queue)}")
@@ -153,7 +159,7 @@ def modswap(entry, modpath, config, mode):
         dest1 = bakpath
         src2 = origpath
         str_dest = "original game"
-    src1 = dest2 = gamepath
+    src3 = dest2 = gamepath
 
     fpaths = []
 
@@ -183,20 +189,28 @@ def modswap(entry, modpath, config, mode):
     if fpaths:
         for fpath in fpaths:
             src1_fpath = os.path.join(src1, fpath)
-            if os.path.isfile(src1_fpath):
-                os.renames(
-                    src1_fpath,
-                    os.path.join(dest1, fpath)
-                )
+            dst1_fpath = os.path.join(dest1, fpath)
+            if ((copy and not os.path.isfile(dst1_fpath)) or not copy) \
+                    os.path.isfile(src1_fpath):
+            if copy:
+                if not os.path.isfile(dst1_fpath):
+                    os.makedirs(dest1, exist_ok=True)
+                    shutil.copyfile(src1_fpath, dst1_fpath)
+                    os.renames(src1_fpath, dst1_fpath)
+            else:
+                os.renames(src1_fpath, dst1_fpath)
+
 
         say(f"Installing {str_dest} files")
         for fpath in fpaths:
             src2_fpath = os.path.join(src2, fpath)
+            dst2_fpath = os.path.join(dest2, fpath)
             if os.path.isfile(src2_fpath):
-                os.renames(
-                    src2_fpath,
-                    os.path.join(dest2, fpath)
-                )
+                if copy:
+                    os.makedirs(dest2, exist_ok=True)
+                    shutil.copyfile(src2_fpath, dst2_fpath)
+                else:
+                    os.renames(src2_fpath, dst2_fpath)
 
     if mode == "install":
         entry.active = True
@@ -251,6 +265,8 @@ if __name__ == "__main__":
             print(col("ylw-bright", f"[{k}]"))
             print(col("cyan-bright", "    Game Path: ") + v.basepath)
             print(col("cyan-bright", "    Mod active? ") + active_color(v.active))
+            if v.copy:
+                print(col("cyan-bright", "    Copy mode? ") + active_color(v.copy))
             print(col("cyan-bright", "    Dependencies? ") + v.dep_titles)
             print(col("cyan-bright", "    Depends on me? ") + v.dom_titles)
             print()
@@ -265,7 +281,7 @@ if __name__ == "__main__":
         if title in config.entries:
             print("Error: Config already contains that entry!")
             sys.exit(1)
-        entry = Entry(title, "Put game path here", False, list())
+        entry = Entry(title, "Put game path here", False, False, list())
         config.entries[title] = entry
         config.write()
         os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
