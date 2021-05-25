@@ -228,9 +228,11 @@ def setup_args():
     meg_mode.add_argument("--init",
         help="Initialize a new mod entry")
     meg_mode.add_argument("--install", "-i",
-        help="Install a mod", metavar="MODNAME")
+        nargs="+",
+        help="Install a mod", metavar="MODNAMES",
+        dest="install_modlist")
     meg_mode.add_argument("--uninstall", "-u",
-        help="Uninstall a mod", metavar="MODNAME")
+        help="Uninstall a mod (one at a time!)", metavar="MODNAME")
     meg_mode.add_argument("--reset", "-r", action="store_true",
         help="Uninstall all mods")
 
@@ -268,13 +270,18 @@ if __name__ == "__main__":
         config.write()
         os.makedirs(os.path.join(args.modpath, title, MOD_FOLDER))
 
-    elif args.install:
-        if args.install not in config.entries:
-            print("Error: I don't recognize that mod!")
+    elif args.install_modlist:
+        # First, verify that all provided mods exist
+        badmods = []
+        for modname in args.install_modlist:
+            if modname.lower() not in config.entries:
+                badmods.append(modname)
+        if badmods:
+            print("Error: Mod(s) not recognized:", ",".join(badmods))
             sys.exit(1)
-        title = args.install.lower()
-        if args.install:
-            modswap(config.entries[title], args.modpath, config, "install")
+        for modname in args.install_modlist:
+            modname = modname.lower()
+            modswap(config.entries[modname], args.modpath, config, "install")
         config.write()
 
     elif args.uninstall or args.reset:
