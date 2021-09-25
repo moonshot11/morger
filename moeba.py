@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import argparse
 import os
@@ -133,9 +133,11 @@ def modswap(entry, modpath, config, mode):
 
     if mode == "install" and entry.active == "Yes":
         say("Already installed")
+        print()
         return
     elif mode == "uninstall" and entry.active == "No":
         say("Already uninstalled")
+        print()
         return
 
     bakpath = os.path.join(modpath, entry.title, MOD_FOLDER)
