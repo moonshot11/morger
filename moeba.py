@@ -183,7 +183,7 @@ def modswap(entry, modpath, config, mode):
     if fpaths:
         for fpath in fpaths:
             src1_fpath = os.path.join(src1, fpath)
-            if os.path.isfile(src1_fpath):
+            if os.path.isfile(src1_fpath) or os.path.islink(src1_fpath):
                 os.renames(
                     src1_fpath,
                     os.path.join(dest1, fpath)
@@ -192,7 +192,7 @@ def modswap(entry, modpath, config, mode):
         say(f"Installing {str_dest} files")
         for fpath in fpaths:
             src2_fpath = os.path.join(src2, fpath)
-            if os.path.isfile(src2_fpath):
+            if os.path.isfile(src2_fpath) or os.path.islink(src2_fpath):
                 os.renames(
                     src2_fpath,
                     os.path.join(dest2, fpath)
