@@ -226,7 +226,9 @@ def setup_args():
     meg_mode = parser.add_mutually_exclusive_group(required=True)
 
     meg_mode.add_argument("--list", "-l", action="store_true",
-        help="List out mods currently stored in config")
+        help="List mods currently stored in config")
+    meg_mode.add_argument("--long-list", "-ll", action="store_true",
+        help="Display full mod config details")
     meg_mode.add_argument("--init",
         help="Initialize a new mod entry")
     meg_mode.add_argument("--install", "-i",
@@ -243,23 +245,28 @@ def setup_args():
 if __name__ == "__main__":
     args = setup_args()
     config = Config(args.config)
-    if args.list:
+    if args.list or args.long_list:
         def active_color(word):
             if word == "Yes":
                 return col("green-bright", "Yes")
             return "No"
+        print()
         for k in sorted(config.entries.keys()):
             v = config.entries[k]
             print(col("ylw-bright", f"[{k}]"))
-            print(col("cyan-bright", "    Game Path: ") + v.basepath)
+            if args.long_list:
+                print(col("cyan-bright", "    Game Path: ") + v.basepath)
             print(col("cyan-bright", "    Mod active? ") + active_color(v.active))
-            print(col("cyan-bright", "    Dependencies? ") + v.dep_titles)
-            print(col("cyan-bright", "    Depends on me? ") + v.dom_titles)
-            print()
-        print(f"Installation history queue ({len(config.queue)})")
-        for i, item in enumerate(config.queue):
-            ordinal = f"{i+1}. ".rjust(4)
-            print("   " + ordinal + item)
+            if args.long_list:
+                print(col("cyan-bright", "    Dependencies? ") + v.dep_titles)
+                print(col("cyan-bright", "    Depends on me? ") + v.dom_titles)
+                print()
+
+        if args.long_list:
+            print(f"Installation history queue ({len(config.queue)})")
+            for i, item in enumerate(config.queue):
+                ordinal = f"{i+1}. ".rjust(4)
+                print("   " + ordinal + item)
         print()
 
     elif args.init:
