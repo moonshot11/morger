@@ -143,7 +143,7 @@ def modswap(entry, modpath, config, mode):
     bakpath = os.path.join(modpath, entry.title, MOD_FOLDER)
     origpath = os.path.join(modpath, entry.title, ORIG_FOLDER)
     gamepath = entry.basepath
-    filelist = os.path.join(modpath, entry.title, "modfiles.list")
+    filelist = os.path.join(modpath, entry.title, "modfiles.txt")
 
     if mode == "install":
         dest1 = origpath
